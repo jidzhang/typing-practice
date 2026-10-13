@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打字练习 · 提速提准 · 离线可用</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div>
+      <h1>打字练习</h1>
+    </div>
+    <div class="tabs">
+      <button id="tabRef" class="active">对照跟打</button>
+      <button id="tabFree">自由练习</button>
+      <button id="btnTheme" class="icon-btn" title="切换亮/暗主题">🌙 深色</button>
+    </div>
+    <p class="sub">对照跟打提准 · 自由练习提速 · 击键记录找短板 · 选中自动复制 · 全离线（依赖已存 vendor/）</p>
+  </div>
+</header>
+
+<main>
+  <!-- 练习区：对照 + 输入焊在同一张卡，上下紧贴 -->
+  <section class="card practice-card">
+    <div class="practice-head">
+      <h2>练习区 <span class="head-hint">上看下打，眼动最短</span></h2>
+      <div class="timer-inline">
+        <button id="btnStart" class="btn primary btn-sm">开始</button>
+        <button id="btnPause" class="btn btn-sm">暂停</button>
+        <button id="btnReset" class="btn btn-sm">重置</button>
+        <button id="btnFinish" class="btn btn-sm">结束打分</button>
+        <span class="t" title="用时"><b id="mTime">00:00</b></span>
+        <span class="t" title="挑战剩余">剩 <b id="mChallenge">∞</b></span>
+      </div>
+    </div>
+
+    <div id="refCard">
+      <div class="row sample-row">
+        <select id="sampleSel" class="sel" style="flex:1;min-width:200px"></select>
+        <button id="btnLoadSample" class="btn primary btn-sm">载入范文开练</button>
+      </div>
+      <details class="custom-details">
+        <summary>自定义文本 / 错题强化（点击展开）</summary>
+        <textarea id="refEdit" class="ref-edit" placeholder="粘贴自己的文本（歌词、代码、英语文章都行），然后点「设为对照文本」。"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button id="btnUseCustom" class="btn btn-sm">设为对照文本</button>
+          <button id="btnPracticeMistakes" class="btn btn-sm" disabled>用错题本生成强化段</button>
+        </div>
+      </details>
+      <div id="refView"></div>
+      <div class="progress"><div id="refProgressBar"></div></div>
+      <div class="pair-hint">↑ 对照：绿=对 / 红=错 / 黄=当前字 &nbsp;·&nbsp; ↓ 直接在下方输入框跟打（对照区选中也会自动复制）</div>
+    </div>
+
+    <textarea id="pad" class="mono-input" placeholder="对照模式：照着紧上方绿字跟打。&#10;自由模式：随便打，看下方速度曲线和退格率。&#10;&#10;选中文字会自动复制（鼠标拖选 / Shift+方向键 / Ctrl+A）。&#10;编辑是 VS Code 手感：Ctrl+D 连选，Alt+↑↓ 移行，快捷键表在下方。"></textarea>
+
+    <div class="statusbar">
+      <span>全文 <b id="stTotal">0</b></span>
+      <span>中文 <b id="stHan">0</b></span>
+      <span>英文词 <b id="stWords">0</b></span>
+      <span>行 <b id="stLines">0</b></span>
+      <span>已选 <b id="stSel">0</b></span>
+      <span id="stSave" style="margin-left:auto">已自动保存</span>
+    </div>
+
+    <!-- 次要操作：沉底、弱化，不抢注意力 -->
+    <div class="copy-row">
+      <label class="switch switch-sm" id="switchLabel"><input type="checkbox" id="autoCopy" checked> 选中自动复制：开 </label>
+      <span class="copy-btns">
+        <button id="btnCopySel" class="btn btn-sm ghost">复制选中</button>
+        <button id="btnCopyAll" class="btn btn-sm ghost">复制全部</button>
+        <button id="btnSelectAll" class="btn btn-sm ghost">全选</button>
+        <button id="btnClear" class="btn btn-sm ghost danger">清空</button>
+      </span>
+    </div>
+    <details class="keys-details">
+      <summary>⌨ 编辑快捷键（VS Code 风，点击展开）</summary>
+      <div class="keys-grid">
+        <div><kbd>Ctrl</kbd>+<kbd>⌫</kbd>/<kbd>Del</kbd><span>按词删除（中文一字一删）</span></div>
+        <div><kbd>Ctrl</kbd>+<kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd><span>下方插入空行</span></div>
+        <div><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd><span>上方插入空行</span></div>
+                <div><kbd>Ctrl</kbd>+<kbd>D</kbd><span>连选下一个相同的词</span></div>
+        <div><kbd>Ctrl</kbd>+<kbd>L</kbd><span>选中整行</span></div>
+        <div><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd><span>删除整行</span></div>
+        <div><kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd><span>移动整行</span></div>
+        <div><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd><span>复制整行</span></div>
+        <div><kbd>Ctrl</kbd>+<kbd>/</kbd><span>行注释开关</span></div>
+        <div><kbd>Tab</kbd>/<kbd>Shift</kbd>+<kbd>Tab</kbd><span>缩进 / 退格 2 格</span></div>
+        <div><kbd>Ctrl</kbd>+<kbd>S</kbd><span>保存到本机</span></div>
+      </div>
+      <div class="keys-note">Mac 用 ⌘ 代替 Ctrl；单行改动支持 Ctrl+Z 撤销；拼音组字时不拦截，放心打中文。</div>
+    </details>
+    <div id="msg"></div>
+    <div id="reportBox" class="tip hidden" style="border-style:solid"><div id="reportText"></div></div>
+  </section>
+
+  <!-- 数据面板 -->
+  <section class="card">
+    <h2>数据 · 目标 · 速度曲线</h2>
+    <div class="row">
+      <label style="font-size:14px">挑战
+        <select id="challengeDur" class="sel">
+          <option value="0">不限时</option>
+          <option value="60">1 分钟</option>
+          <option value="180">3 分钟</option>
+          <option value="300">5 分钟</option>
+        </select>
+      </label>
+      <label style="font-size:14px">目标 <input id="targetCpm" class="num" type="number" min="0" max="1000" value="0" style="width:76px"> 字/分</label>
+      <label style="font-size:14px"><input id="targetAcc" class="num" type="number" min="0" max="100" value="0" style="width:64px"> % 准确率</label>
+      <span id="targetState" style="font-size:13px">未设目标</span>
+      <span class="font-ctl" style="margin-left:auto">字体 <input id="fontSize" type="range" min="13" max="24" value="17"> <b id="fontVal">17px</b></span>
+    </div>
+    <div class="dash" style="margin-top:12px">
+      <div class="metric hl"><div class="k">中文速度</div><div class="v" id="mCpm">0 <small>字/分</small></div></div>
+      <div class="metric hl"><div class="k">英文速度</div><div class="v" id="mWpm">0 <small>词/分</small></div></div>
+      <div class="metric"><div class="k">准确率</div><div class="v" id="mAcc">—</div></div>
+      <div class="metric"><div class="k">综合分</div><div class="v" id="mScore">—</div></div>
+      <div class="metric"><div class="k">评级</div><div class="v" id="mGrade" style="font-size:16px">—</div></div>
+      <div class="metric"><div class="k">提示</div><div class="v" style="font-size:12px;font-weight:400">退格率&gt;8%就降速；节奏飘就同一篇连打3遍</div></div>
+    </div>
+    <div class="dash">
+      <div class="metric"><div class="k">按键数（含组字）</div><div class="v" id="mKeys">0</div></div>
+      <div class="metric"><div class="k">退格数</div><div class="v" id="mBack">0</div></div>
+      <div class="metric"><div class="k">退格率</div><div class="v" id="mBackRate">0 <small>%</small></div></div>
+      <div class="metric"><div class="k">平均键间隔</div><div class="v" id="mIki">—</div></div>
+      <div class="metric"><div class="k">节奏稳定性</div><div class="v" id="mStable" style="font-size:16px">—</div></div>
+      <div class="metric"><div class="k">本次评语</div><div class="v" style="font-size:12px;font-weight:400">打完自动结算，去复盘看短板</div></div>
+    </div>
+    <div class="chart-wrap"><canvas id="speedChart"></canvas></div>
+    <div id="chartEmpty" class="hidden" style="font-size:13px;color:var(--muted)">图表库未加载（vendor/chart.umd.min.js 缺失时），不影响打字与打分。</div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>错因复盘（提准用）</h2>
+      <div style="font-size:13px;color:var(--muted)">最常打错的对照</div>
+      <ul id="errList"><li>开始打字后，这里会列出你最常打错的对照。</li></ul>
+      <div style="font-size:13px;color:var(--muted);margin-top:8px">最慢 / 最常删的键（来自击键记录）</div>
+      <ul id="slowList"><li>多打 30 个键后可见。</li></ul>
+    </section>
+    <section class="card">
+      <h2>错题本（跨次累计）</h2>
+      <div id="mistakeChars" style="font-size:15px;line-height:2">暂无</div>
+      <div class="row" style="margin-top:8px">
+        <button id="btnClearMistakes" class="btn btn-sm danger">清空错题本</button>
+      </div>
+      <div class="tip">对照模式下打错的字会自动进错题本。回练习区展开「自定义文本 / 错题强化」一键出题，反复练 3 遍，错字率掉得最快。数据只存本机浏览器。</div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>历史成绩（本机保存，前 30 条）</h2>
+    <div class="row"><button id="btnClearHist" class="btn btn-sm danger">清空历史</button></div>
+    <div style="overflow:auto">
+    <table class="hist">
+      <thead><tr><th>时间</th><th>模式</th><th>文本</th><th>速度 CPM/WPM</th><th>准确率</th><th>综合分</th><th>用时</th></tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>使用说明（保留）</h2>
+    <div class="tip">
+      1. <b>两种练法</b>：对照跟打练准确率（照绿字打，打完自动结算）；自由练习练速度（看速度曲线是否平稳）。<br>
+      2. <b>选中即复制</b>：输入框和对照区拖选 / 双击 / <code>Shift+方向键</code> / <code>Ctrl+A</code> 都会自动复制，输入框下方的开关可关。浏览器若拦剪贴板（<code>file://</code> 或非 HTTPS）会提示你按 <code>Ctrl+C</code>。<br>
+      3. <b>计时</b>：第一次敲键自动开始。挑战时长选 1/3/5 分钟，时间到自动结算。<br>      4. <b>编辑区是 VS Code 手感</b>：<code>Ctrl+Backspace</code> 按词删、<code>Ctrl+Enter</code> / <kbd>Shift</kbd>+<kbd>Enter</kbd> 下方插行、<code>Ctrl+D</code> 连选、<code>Alt+↑↓</code> 移行、<code>Tab</code> 缩进、<code>Ctrl+Z</code> 撤销。完整表见输入框下方「编辑快捷键」。复制全部请点按钮。<br>
+      5. <b>看什么</b>：中文看 字/分，英文看 词/分；退格率 &gt;8% 说明太赶，先降速保 50 字不断删；节奏“飘”说明停顿多，同一篇短文连打 3 遍。<br>
+      6. <b>提分套路</b>：定目标（如 120字/分 + 95%）→ 打一段 → 看复盘和教练建议 → 用错题本强化 → 再打同一段，分数涨得最快。<br>
+      7. <b>离线</b>：本项目无 CDN，图表库在 <code>vendor/chart.umd.min.js</code>，文本在 <code>texts/samples.json</code>，双击 <code>index.html</code> 或 <code>python3 -m http.server</code> 后打开 <code>http://localhost:8000/</code> 都可，推荐后者（剪贴板最稳）。<br>
+      8. <b>隐私</b>：内容、成绩、错题、击键统计只存本机 <code>localStorage</code>，不联网。
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+<footer>typing-practice · 单机离线 · JS/CSS 分文件 · 第三方库本地化（Chart.js MIT，见 vendor/NOTICE.txt）</footer>
+
+<script src="vendor/chart.umd.min.js"></script>
+<script src="js/texts.js"></script>
+<script src="js/clipboard.js"></script>
+<script src="js/stats.js"></script>
+<script src="js/scoring.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+第三方库（已本地化，可离线）：
+- Chart.js v4.4.1 (UMD, chart.umd.min.js)，MIT License，https://github.com/chartjs/Chart.js
+  用途：速度曲线图。页面在 Chart 缺失时仍可打字/打分（有降级提示）。

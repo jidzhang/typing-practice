@@ -1,0 +1,38 @@
+[
+  {
+    "id": "cn-basic",
+    "name": "中文入门 · 静夜思",
+    "lang": "zh",
+    "text": "床前明月光，疑是地上霜。举头望明月，低头思故乡。"
+  },
+  {
+    "id": "cn-prose",
+    "name": "中文散文 · 秋水",
+    "lang": "zh",
+    "text": "落霞与孤鹜齐飞，秋水共长天一色。渔舟唱晚，响穷彭蠡之滨；雁阵惊寒，声断衡阳之浦。练习打字时保持节奏，眼睛看原文，手指记位置，错了不要停，整段打完再回头改。"
+  },
+  {
+    "id": "cn-long",
+    "name": "中文长段 · 春江花月夜（节选）",
+    "lang": "zh",
+    "text": "春江潮水连海平，海上明月共潮生。滟滟随波千万里，何处春江无月明。江流宛转绕芳甸，月照花林皆似霰。空里流霜不觉飞，汀上白沙看不见。"
+  },
+  {
+    "id": "en-basic",
+    "name": "英文入门 · Pangram",
+    "lang": "en",
+    "text": "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs."
+  },
+  {
+    "id": "en-prose",
+    "name": "英文长段 · 练习常用词",
+    "lang": "en",
+    "text": "Typing is a skill that grows with steady practice. Keep your eyes on the text, keep your wrists relaxed, and do not stop for every small mistake. Finish the passage first, then review your accuracy and speed."
+  },
+  {
+    "id": "mix-daily",
+    "name": "中英混合 · 日常",
+    "lang": "mix",
+    "text": "今天的练习目标：typing 500字，准确率 95% 以上。Keep going! 打完一段后看看速度曲线，找到自己最容易出错的键，比如 shi 和 si，the 和 teh。"
+  }
+]
