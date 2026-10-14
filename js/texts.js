@@ -1,9 +1,14 @@
 /* texts.js - 内置练习文本（file:// 下 fetch 不可用时的兜底，保证离线可用） */
 window.SAMPLE_TEXTS = [
   { id: "cn-basic", name: "中文入门 · 静夜思", lang: "zh", text: "床前明月光，疑是地上霜。举头望明月，低头思故乡。" },
-  { id: "cn-prose", name: "中文散文 · 秋水", lang: "zh", text: "落霞与孤鹜齐飞，秋水共长天一色。渔舟唱晚，响穷彭蠡之滨；雁阵惊寒，声断衡阳之浦。练习打字时保持节奏，眼睛看原文，手指记位置，错了不要停，整段打完再回头改。" },
-  { id: "cn-long", name: "中文长段 · 春江花月夜（节选）", lang: "zh", text: "春江潮水连海平，海上明月共潮生。滟滟随波千万里，何处春江无月明。江流宛转绕芳甸，月照花林皆似霰。空里流霜不觉飞，汀上白沙看不见。" },
+  { id: "cn-news-ai", name: "中文新闻 · 人工智能", lang: "zh", text: "【科技新闻】新一代人工智能大模型近日集中发布，多家厂商把上下文长度做到百万字符级别，推理成本比去年下降约七成。业内人士指出，模型能力正从单纯比拼参数规模，转向智能体任务完成度。教育、医疗、工业质检等场景率先落地，但数据合规与算力供给仍是瓶颈。下阶段焦点是端侧小模型与云端大模型的协同。" },
+  { id: "cn-news-econ", name: "中文新闻 · 经济", lang: "zh", text: "【经济新闻】最新数据显示，制造业采购经理指数连续三个月位于扩张区间，高技术制造业增加值保持两位数增长。消费方面，家电以旧换新政策带动销售额明显回升，线上线下融合趋势加快。专家认为，内需仍是经济增长的主引擎，建议继续加大对专精特新企业的信贷支持，稳定市场主体预期。" },
+  { id: "cn-tech-chip", name: "中文科普 · 芯片", lang: "zh", text: "【科普】芯片制造堪称现代工业皇冠上的明珠。一块指甲盖大小的芯片，要经过光刻、刻蚀、沉积、封装等上千道工序。光刻机用极紫外光在硅片上雕刻电路，线宽不到头发丝的千分之一。制程数字越小，同样面积能塞下的晶体管越多，性能越强、功耗越低，但研发投入也呈指数级上升。" },
+  { id: "cn-tech-battery", name: "中文科普 · 固态电池", lang: "zh", text: "【科普】固态电池被视为下一代储能技术的关键路线。它用固态电解质替代易燃的液态电解液，能量密度有望翻倍，充电十分钟续航数百公里，安全性和低温性能也更好。不过界面阻抗大、量产成本高仍是拦路虎。从实验室样品到装车量产，一般还要走五到八年。" },
+  { id: "en-news-ai", name: "英文新闻 · AI Agents", lang: "en", text: "[Tech] Artificial intelligence agents moved from demos to daily work this year. Instead of answering single questions, they now book flights, reconcile expenses, and write test reports across several apps. Analysts expect the market for agent platforms to double within three years, while regulators race to set rules for data access and liability." },
+  { id: "en-news-solar", name: "英文新闻 · Solar Power", lang: "en", text: "[World] Global solar installations hit another record as panel prices fell to historic lows. Deserts once seen as wastelands now host gigawatt-scale power bases, sending clean electricity hundreds of kilometers to coastal cities. Grid operators say storage remains the missing piece, and battery farms are expanding faster than any other power asset." },
   { id: "en-basic", name: "英文入门 · Pangram", lang: "en", text: "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs." },
   { id: "en-prose", name: "英文长段 · 练习常用词", lang: "en", text: "Typing is a skill that grows with steady practice. Keep your eyes on the text, keep your wrists relaxed, and do not stop for every small mistake. Finish the passage first, then review your accuracy and speed." },
-  { id: "mix-daily", name: "中英混合 · 日常", lang: "mix", text: "今天的练习目标：typing 500字，准确率 95% 以上。Keep going! 打完一段后看看速度曲线，找到自己最容易出错的键，比如 shi 和 si，the 和 teh。" }
+  { id: "mix-work", name: "中英混合 · 工作周报", lang: "mix", text: "【工作周报】本周 typing 练习达标：对照跟打 5 篇，平均 110 字/分，准确率 96%。Top issue 是 the/teh 混淆和中文标点漏打。Next plan：每天晨会前打 1 篇英文新闻，周五用错题本出强化卷。Keep the rhythm，别断更！" },
+  { id: "mix-daily", name: "中英混合 · 日常", lang: "mix", text: "今天的练习目标：typing 500字，准确率 95% 以上。Keep going! 打完一段后看看速度曲线，找到自己最容易出错的键，比如 shi 和 si，the 和 teh。" },
 ];
