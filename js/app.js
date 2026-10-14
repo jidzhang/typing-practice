@@ -843,7 +843,15 @@
     }
     function openCustomEditor() {
       if (customDetails) customDetails.open = true;
-      refEdit.focus();
+      // 触屏上 focus 可能唤不起键盘：至少把编辑框滚到可见并闪一下
+      try { refEdit.focus({ preventScroll: true }); } catch (e) { try { refEdit.focus(); } catch (e2) {} }
+      try { refEdit.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) {}
+      try {
+        refEdit.classList.remove("flash");
+        void refEdit.offsetWidth;
+        refEdit.classList.add("flash");
+        setTimeout(function () { refEdit.classList.remove("flash"); }, 1300);
+      } catch (e) {}
     }
     btnUseCustom.addEventListener("click", function () {
       var t = refEdit.value.trim();
@@ -864,11 +872,11 @@
       toast("已换范文：" + s.name);
       pad.focus();
     });
-    // 点对照区改文本：拖选是复制（不管），普通点击展开自定义接着改
+    // 点对照区改文本：对照区内拖选是复制（不管）；别处残留的选中不拦路
     refView.addEventListener("click", function () {
       try {
         var sel = window.getSelection();
-        if (sel && sel.toString()) return;
+        if (sel && !sel.isCollapsed && sel.anchorNode && refView.contains(sel.anchorNode)) return;
       } catch (e) {}
       var draft = refEdit.value || "";
       if (draft.trim() && draft !== state.refText &&

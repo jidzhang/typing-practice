@@ -193,10 +193,32 @@ button.ghost:hover { border-color: var(--caret); color: var(--text); }
 label.switch-sm { font-size: 12.5px; padding: 5px 11px; }
 label.switch-sm input { width: 14px; height: 14px; }
 @media (max-width: 640px) {
-  .practice-card #refView { top: 110px; max-height: 26vh; }
+  /* 手机上顶栏不吸顶：省出纵向空间，也避免与吸顶对照区叠在一起 */
+  header.top { position: static; padding: 8px 12px; }
+  main { padding: 0 8px; margin: 12px auto 50px; }
+  .card { padding: 12px; }
+  .practice-card { padding-bottom: 10px; }
+  .practice-card #refView { top: 8px; max-height: 26vh; }
   .copy-btns { margin-left: 0; }
-  textarea.mono-input, #refView { font-size: 18px; }
+  /* 字号跟随用户设置；不小于16px，避免 iOS 聚焦自动缩放 */
+  textarea.mono-input, #refView { font-size: max(16px, var(--pad-font, 16px)); }
+  /* 对照区/输入区内边距保持一致，同步缩小 */
+  .practice-card #refView, .practice-card #pad { padding: 10px 12px; }
+  /* 手指目标放大 */
+  .tabs button, .icon-btn { padding: 9px 16px; }
+  button.btn-sm { padding: 8px 13px; }
+  select.sel, input.num { padding: 9px 12px; font-size: 16px; }
+  label.switch { padding: 8px 13px; }
 }
+/* 全端：按钮去双击缩放延迟；对照区 iOS 惯性滚动 */
+button { touch-action: manipulation; }
+#refView { -webkit-overflow-scrolling: touch; }
+/* 点对照区进入自定义时，高亮编辑框（手机上键盘可能不自动弹出，至少看得到位置） */
+@keyframes flashRing {
+  0%, 100% { box-shadow: none; }
+  30%, 60% { box-shadow: 0 0 0 3px var(--accent-ring); }
+}
+textarea.ref-edit.flash { animation: flashRing 1.2s ease; border-color: var(--caret); }
 /* 快捷键小抄 */
 .keys-details { border: 1.5px dashed var(--border); border-radius: 10px; padding: 8px 12px; margin-top: 10px; background: var(--panel); }
 .keys-details summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text); user-select: none; }
