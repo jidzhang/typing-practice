@@ -181,7 +181,7 @@ footer { text-align: center; font-size: 13px; color: var(--muted); padding: 20px
 .custom-details { border: 1.5px dashed var(--border); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; background: var(--panel); }
 .custom-details summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); user-select: none; }
 .practice-card #refView { border-radius: 10px 10px 0 0; border-bottom: none; margin-bottom: 0; max-height: 30vh; overflow: auto; position: sticky; top: 64px; z-index: 5; cursor: text; }
-.practice-card #refView:hover { border-color: var(--caret); }
+
 .practice-card .progress { border-radius: 0; margin-top: 0; height: 8px; }
 .pair-hint { font-size: 13px; font-weight: 600; color: var(--muted); padding: 6px 2px 8px; }
 .practice-card #pad { border-radius: 0 0 10px 10px; border-top-width: 2px; margin-top: 0; min-height: 240px; }

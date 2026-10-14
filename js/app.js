@@ -139,6 +139,26 @@
   }
 
   /* ---------- 练习文本 ---------- */
+  function selectedSample() {
+    return state.samples.filter(function (x) { return x.id === sampleSel.value; })[0] || null;
+  }
+  function syncSampleSel() {
+    for (var i = 0; i < state.samples.length; i++) {
+      if (state.samples[i].text === state.refText) { sampleSel.value = state.samples[i].id; return; }
+    }
+  }
+  function openCustomEditor() {
+    if (customDetails) customDetails.open = true;
+    // 触屏上 focus 可能唤不起键盘：至少把编辑框滚到可见并闪一下
+    try { refEdit.focus({ preventScroll: true }); } catch (e) { try { refEdit.focus(); } catch (e2) {} }
+    try { refEdit.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) {}
+    try {
+      refEdit.classList.remove("flash");
+      void refEdit.offsetWidth;
+      refEdit.classList.add("flash");
+      setTimeout(function () { refEdit.classList.remove("flash"); }, 1300);
+    } catch (e) {}
+  }
   function initSamples() {
     function fill(list) {
       state.samples = list || [];
@@ -148,12 +168,12 @@
         o.value = s.id; o.textContent = s.name;
         sampleSel.appendChild(o);
       });
-      // 恢复上次 ref
-      var savedRef = null;
-      try { savedRef = localStorage.getItem(LS_REF); } catch (e) {}
+      // 恢复上次 ref：用启动快照（启动瞬间 updateAll 会跑一次，此时读库已被污染）
+      var savedRef = bootSavedRef;
       if (savedRef) {
         state.refText = savedRef;
         refEdit.value = savedRef;
+        syncSampleSel();
       } else if (state.samples.length) {
         var def = null;
         for (var i = 0; i < state.samples.length; i++) {
@@ -193,7 +213,10 @@
     else if (input.length > ref.length) {
       html += "<div style='margin-top:8px;font-size:13px;color:var(--err-fg)'>超出原文 " + (input.length - ref.length) + " 字，已计入扣分。</div>";
     }
+    var keepScroll = 0;
+    try { keepScroll = refView.scrollTop; } catch (e) {}
     refView.innerHTML = html;
+    try { if (keepScroll) refView.scrollTop = keepScroll; } catch (e) {}
     $("refProgressBar").style.width = res.progress.toFixed(1) + "%";
     return res;
   }
@@ -267,16 +290,21 @@
     } else { $("mChallenge").textContent = "∞"; }
 
     // 自动保存
-    try {
-      localStorage.setItem(LS_CONTENT, text);
-      localStorage.setItem(LS_REF, state.refText || "");
-      var t = new Date();
-      $("stSave").textContent = "已自动保存 " + pad2(t.getHours()) + ":" + pad2(t.getMinutes()) + ":" + pad2(t.getSeconds());
-    } catch (e) { $("stSave").textContent = "浏览器禁止本地保存"; }
+    flushSave(text);
 
     // 速度采样（每 tick 由 timer 推入，这里只在输入时补记长度变化）
     if (fromInput && state.started && !state.paused) { state.lastTickLen = text.replace(/\s/g, "").length; }
     return { stats: st, speed: spd, result: res };
+  }
+  function flushSave(text) {
+    try {
+      localStorage.setItem(LS_CONTENT, (text == null ? pad.value : text) || "");
+      // 对照为空时不写：启动瞬间范文还没载入，不能把已存对照清空
+      if (state.refText) localStorage.setItem(LS_REF, state.refText);
+      saveSettings();
+      var t = new Date();
+      $("stSave").textContent = "已自动保存 " + pad2(t.getHours()) + ":" + pad2(t.getMinutes()) + ":" + pad2(t.getSeconds());
+    } catch (e) { $("stSave").textContent = "浏览器禁止本地保存"; }
   }
   function pad2(n) { return (n < 10 ? "0" + n : "" + n); }
 
@@ -652,13 +680,25 @@
     }
   });
 
+  var inputRaf = 0;
+  function raf(fn) {
+    if (window.requestAnimationFrame) return window.requestAnimationFrame(fn);
+    return setTimeout(fn, 16);
+  }
+  function scheduleInputRender() {
+    if (inputRaf) return;
+    inputRaf = raf(function () {
+      inputRaf = 0;
+      updateAll(true);
+      var res = state.mode === "ref" ? window.TypingScoring.scoreReference(state.refText, pad.value) : null;
+      renderErrors(res);
+    });
+  }
   pad.addEventListener("input", function () {
     if (!state.started) startTimer();
-    // 退格关联到 perKey.err（简化：每次 input 若长度变短，记最近键 1 次 err）
-    updateAll(true);
-    var res = state.mode === "ref" ? window.TypingScoring.scoreReference(state.refText, pad.value) : null;
-    renderErrors(res);
-    // 打完对照全文 → 自动结算
+    // 重排合帧：输入法连续上屏也只画一次，手机端不跳
+    scheduleInputRender();
+    // 打完对照全文 → 自动结算（只读长度，不碰 DOM）
     if (state.mode === "ref" && state.refText && pad.value.length >= state.refText.length && state.started) {
       finishPractice(false);
     }
@@ -833,26 +873,6 @@
       if (confirm("确定清空输入框内容吗？")) { pad.value = ""; window.TypingClipboard.resetHistory(); resetAll(false); pad.focus(); }
     });
 
-    function selectedSample() {
-      return state.samples.filter(function (x) { return x.id === sampleSel.value; })[0] || null;
-    }
-    function syncSampleSel() {
-      for (var i = 0; i < state.samples.length; i++) {
-        if (state.samples[i].text === state.refText) { sampleSel.value = state.samples[i].id; return; }
-      }
-    }
-    function openCustomEditor() {
-      if (customDetails) customDetails.open = true;
-      // 触屏上 focus 可能唤不起键盘：至少把编辑框滚到可见并闪一下
-      try { refEdit.focus({ preventScroll: true }); } catch (e) { try { refEdit.focus(); } catch (e2) {} }
-      try { refEdit.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) {}
-      try {
-        refEdit.classList.remove("flash");
-        void refEdit.offsetWidth;
-        refEdit.classList.add("flash");
-        setTimeout(function () { refEdit.classList.remove("flash"); }, 1300);
-      } catch (e) {}
-    }
     btnUseCustom.addEventListener("click", function () {
       var t = refEdit.value.trim();
       if (!t) { setMsg("请先在自定义框里粘贴或输入对照文本。", "warn"); return; }
@@ -872,12 +892,9 @@
       toast("已换范文：" + s.name);
       pad.focus();
     });
-    // 点对照区改文本：对照区内拖选是复制（不管）；别处残留的选中不拦路
-    refView.addEventListener("click", function () {
-      try {
-        var sel = window.getSelection();
-        if (sel && !sel.isCollapsed && sel.anchorNode && refView.contains(sel.anchorNode)) return;
-      } catch (e) {}
+    // 改对照走显式按钮：对照区单击只管选中复制，不再误触编辑
+    var btnEditRef = $("btnEditRef");
+    if (btnEditRef) btnEditRef.addEventListener("click", function () {
       var draft = refEdit.value || "";
       if (draft.trim() && draft !== state.refText &&
           !confirm("自定义框里有还没生效的草稿，要用当前对照文本覆盖吗？\n（点“取消”保留草稿直接改）")) {
@@ -925,7 +942,11 @@
     } catch (e) {}
     // 只用按钮进出专注：打字时 Esc 太容易误触，不绑定快捷键
     if (btnZen) btnZen.addEventListener("click", function () { setZen(document.body.dataset.zen !== "true"); });
-    pad.addEventListener("scroll", function () { try { refView.scrollTop = pad.scrollTop; } catch (e) {} });
+    pad.addEventListener("scroll", function () {
+      try {
+        if (Math.abs(refView.scrollTop - pad.scrollTop) > 2) refView.scrollTop = pad.scrollTop;
+      } catch (e) {}
+    });
     fontSize.addEventListener("input", function () { applyFont(); saveSettings(); });
     [challengeDur, targetCpm, targetAcc].forEach(function (el) { el.addEventListener("change", saveSettings); });
 
@@ -950,7 +971,9 @@
   }
 
   /* ---------- 启动 ---------- */
+  var bootSavedRef = null;
   function boot() {
+    try { bootSavedRef = localStorage.getItem(LS_REF); } catch (e) { bootSavedRef = null; }
     loadSettings();
     applyFont();
     bind();
@@ -965,7 +988,14 @@
     updateAll(false);
     refreshTimerBtns();
     updateChart();
-    pad.focus();
+    // 触屏设备不主动聚焦：避免 iPhone 上弹键盘顶起页面
+    var coarse = false;
+    try { coarse = window.matchMedia && matchMedia("(pointer: coarse)").matches; } catch (e) {}
+    if (!coarse) { try { pad.focus(); } catch (e) {} }
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) flushSave();
+    });
+    window.addEventListener("pagehide", function () { flushSave(); });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

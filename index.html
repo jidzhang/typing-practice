@@ -61,9 +61,10 @@ document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
           <button id="btnPracticeMistakes" class="btn btn-sm" disabled>用错题本生成强化段</button>
         </div>
       </details>
-      <div id="refView" title="点击可修改对照文本（拖选为复制，不触发修改）"></div>
+      <div id="refView" title="对照文本"></div>
       <div class="progress"><div id="refProgressBar"></div></div>
-      <div class="pair-hint">↑ 对照：绿=对 / 红=错 / 竖线=当前字 &nbsp;·&nbsp; ↓ 直接在下方输入框跟打 &nbsp;·&nbsp; 点击对照区可改文本（拖选为复制）</div>
+      <div class="pair-hint">↑ 对照：绿=对 / 红=错 / 竖线=当前字 &nbsp;·&nbsp; ↓ 直接在下方输入框跟打（对照区拖选可复制）
+      <button id="btnEditRef" class="btn btn-sm ghost" title="修改对照文本" style="margin-left:6px">✏️ 改对照</button></div>
     </div>
 
     <textarea id="pad" class="mono-input" placeholder="对照模式：照着紧上方绿字跟打。&#10;自由模式：随便打，看下方速度曲线和退格率。&#10;&#10;选中文字会自动复制（鼠标拖选 / Shift+方向键 / Ctrl+A）。&#10;编辑是 VS Code 手感：Ctrl+D 连选，Alt+↑↓ 移行，快捷键表在下方。"></textarea>
