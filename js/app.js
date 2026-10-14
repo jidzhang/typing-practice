@@ -103,11 +103,14 @@
   }
   function refreshZenBtn() {
     var on = document.body.dataset.zen === "true";
-    if (btnZen) btnZen.textContent = on ? "↩ 退出专注" : "🧘 专注";
+    if (!btnZen) return;
+    btnZen.textContent = on ? "↩ 退出专注" : "🧘 专注";
+    btnZen.title = on ? "退出专注后可看速度曲线、错因复盘和历史成绩" : "专注模式：只留练习区并放大";
   }
   function setZen(on) {
     document.body.dataset.zen = on ? "true" : "false";
     refreshZenBtn(); saveSettings();
+    if (on) toast("专注模式：其他面板已隐藏，退出后可看评分、曲线和复盘");
     if (!on && state.chart) { try { state.chart.resize(); } catch (e) {} }
     if (on) pad.focus();
   }
@@ -912,11 +915,8 @@
       if (darkMq.addEventListener) darkMq.addEventListener("change", onSysTheme);
       else if (darkMq.addListener) darkMq.addListener(onSysTheme);
     } catch (e) {}
+    // 只用按钮进出专注：打字时 Esc 太容易误触，不绑定快捷键
     if (btnZen) btnZen.addEventListener("click", function () { setZen(document.body.dataset.zen !== "true"); });
-    // Esc 退出专注（拼音组字中不拦截）
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && !state.composing && document.body.dataset.zen === "true") setZen(false);
-    });
     pad.addEventListener("scroll", function () { try { refView.scrollTop = pad.scrollTop; } catch (e) {} });
     fontSize.addEventListener("input", function () { applyFont(); saveSettings(); });
     [challengeDur, targetCpm, targetAcc].forEach(function (el) { el.addEventListener("change", saveSettings); });

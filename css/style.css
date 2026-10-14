@@ -10,7 +10,7 @@
   --border-soft: #e7eee1;
   --text: #1c231d;
   --text-2: #37473a;
-  --muted: #5f6f60;
+  --muted: #414b42;
   --accent: #c9f0d4;
   --accent-hover: #a9e6bb;
   --accent-ink: #0b3d20;
@@ -62,7 +62,7 @@ body { margin: 0; background: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif; }
 /* 顶栏：白底细线，不抢戏 */
 header.top { background: var(--bg); border-bottom: 2px solid var(--border-soft); padding: 12px 20px; position: sticky; top: 0; z-index: 10; }
-.top-inner { max-width: 1080px; margin: 0 auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.top-inner { max-width: 1048px; margin: 0 auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; } /* 1048 = 练习区内容宽（1080-两侧16px），顶行与卡片左右对齐 */
 .top-inner h1 { margin: 0; font-size: 19px; font-weight: 800; color: var(--text); }
 .top-inner h1 img.logo { height: 1em; width: 1em; vertical-align: -0.12em; margin-right: 8px; }
 .top-inner .sub { width: 100%; margin: 2px 0 0; font-size: 13px; color: var(--muted); }
@@ -213,8 +213,7 @@ body[data-zen="true"] header.top { padding: 2px 20px; }
 body[data-zen="true"] .top-inner { gap: 6px; }
 body[data-zen="true"] .top-inner h1 { font-size: 16px; }
 body[data-zen="true"] .tabs button, body[data-zen="true"] .icon-btn { padding: 4px 12px; font-size: 13px; }
-body[data-zen="true"] header.top .sub { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-body[data-zen="true"] main { max-width: 880px; }
+body[data-zen="true"] header.top .sub { display: none; }
 body[data-zen="true"] main > section:not(.practice-card),
 body[data-zen="true"] main > .grid2 { display: none; }
 body[data-zen="true"] footer { display: none; }
