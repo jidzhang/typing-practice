@@ -11,8 +11,8 @@
   var btnStart = $("btnStart"), btnPause = $("btnPause"), btnReset = $("btnReset"), btnFinish = $("btnFinish");
   var btnCopySel = $("btnCopySel"), btnCopyAll = $("btnCopyAll"),
       btnSelectAll = $("btnSelectAll"), btnClear = $("btnClear");
-  var btnLoadSample = $("btnLoadSample"), btnUseCustom = $("btnUseCustom"), btnPracticeMistakes = $("btnPracticeMistakes");
-  var btnClearHist = $("btnClearHist"), btnTheme = $("btnTheme");
+  var btnUseCustom = $("btnUseCustom"), btnPracticeMistakes = $("btnPracticeMistakes"), customDetails = $("customDetails");
+  var btnClearHist = $("btnClearHist"), btnTheme = $("btnTheme"), btnZen = $("btnZen");
   var fontSize = $("fontSize"), fontVal = $("fontVal");
   var challengeDur = $("challengeDur"), targetCpm = $("targetCpm"), targetAcc = $("targetAcc");
 
@@ -21,6 +21,7 @@
 
   var state = {
     mode: "ref",
+    themePref: "auto", // auto | light | dark：auto 跟随系统
     samples: [],
     refText: "",
     started: false,
@@ -61,7 +62,18 @@
       var s = JSON.parse(localStorage.getItem(LS_SETTINGS) || "{}");
       if (s.mode) state.mode = s.mode;
       if (typeof s.autoCopy === "boolean") autoCopyBox.checked = s.autoCopy;
-      if (s.theme) document.documentElement.setAttribute("data-theme", s.theme);
+      // 主题偏好：新存档带 themeV=1，直接用 auto/light/dark；
+      // 老存档只有解析后的 light/dark，其中 dark 必为手动点过，保留为显式，
+      // light 无法区分是否手动过，一律按 auto 跟随系统
+      if (s.themeV === 1 && (s.theme === "auto" || s.theme === "light" || s.theme === "dark")) {
+        state.themePref = s.theme;
+      } else if (s.theme === "dark") {
+        state.themePref = "dark";
+      } else {
+        state.themePref = "auto";
+      }
+      if (s.zen === true) document.body.dataset.zen = "true";
+      applyTheme();
       if (s.fontSize) { fontSize.value = s.fontSize; applyFont(); }
       if (s.targetCpm) targetCpm.value = s.targetCpm;
       if (s.targetAcc) targetAcc.value = s.targetAcc;
@@ -71,13 +83,16 @@
     try { state.totalKeyStat = JSON.parse(localStorage.getItem(LS_KEYSTAT) || "{}"); } catch (e) { state.totalKeyStat = {}; }
     refreshSwitchLabel();
     refreshThemeBtn();
+    refreshZenBtn();
   }
   function saveSettings() {
     try {
       localStorage.setItem(LS_SETTINGS, JSON.stringify({
         mode: state.mode,
         autoCopy: autoCopyBox.checked,
-        theme: document.documentElement.getAttribute("data-theme") || "light",
+        theme: state.themePref || "auto",
+        themeV: 1,
+        zen: document.body.dataset.zen === "true",
         fontSize: fontSize.value,
         targetCpm: targetCpm.value, targetAcc: targetAcc.value,
         challengeDur: challengeDur.value
@@ -85,6 +100,16 @@
       localStorage.setItem(LS_MISTAKES, JSON.stringify(state.mistakes));
       localStorage.setItem(LS_KEYSTAT, JSON.stringify(state.totalKeyStat));
     } catch (e) {}
+  }
+  function refreshZenBtn() {
+    var on = document.body.dataset.zen === "true";
+    if (btnZen) btnZen.textContent = on ? "↩ 退出专注" : "🧘 专注";
+  }
+  function setZen(on) {
+    document.body.dataset.zen = on ? "true" : "false";
+    refreshZenBtn(); saveSettings();
+    if (!on && state.chart) { try { state.chart.resize(); } catch (e) {} }
+    if (on) pad.focus();
   }
   function applyFont() {
     var px = parseInt(fontSize.value, 10) || 18;
@@ -94,9 +119,20 @@
   function refreshSwitchLabel() {
     switchLabel.childNodes[1].textContent = autoCopyBox.checked ? " 选中自动复制：开 " : " 选中自动复制：关 ";
   }
+  function currentTheme() {
+    if (state.themePref === "light" || state.themePref === "dark") return state.themePref;
+    try { return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
+    catch (e) { return "light"; }
+  }
+  function applyTheme() {
+    document.documentElement.setAttribute("data-theme", currentTheme());
+    refreshThemeBtn();
+  }
   function refreshThemeBtn() {
-    var dark = document.documentElement.getAttribute("data-theme") === "dark";
-    btnTheme.textContent = dark ? "☀ 浅色" : "🌙 深色";
+    var pref = state.themePref || "auto";
+    btnTheme.textContent = pref === "auto" ? "🌓 自动" : (pref === "dark" ? "🌙 深色" : "☀ 浅色");
+    btnTheme.title = "主题：自动跟随系统 / 浅色 / 深色，点击切换（当前" +
+      (pref === "auto" ? "自动" : (pref === "dark" ? "深色" : "浅色")) + "）";
   }
 
   /* ---------- 练习文本 ---------- */
@@ -140,14 +176,14 @@
     var cur = Math.min(input.length, ref.length);
     for (var i = 0; i < ref.length; i++) {
       var ch = ref[i];
-      var disp = ch === "\n" ? "⏎\n" : (ch === " " ? "␣" : escapeHtml(ch));
+      var disp = escapeHtml(ch); // 与输入区逐字同宽：不插入额外符号
       var cls = res.perChar[i] === 1 ? "ok" : (res.perChar[i] === 2 ? "err" : "todo");
       if (i === cur) cls += " cur";
       html += "<span class='" + cls + "'>" + disp + "</span>";
     }
     if (!ref) html = "<span class='todo'>请在上方选择范文或粘贴自定义文本后点「设为对照文本」。</span>";
     else if (input.length > ref.length) {
-      html += "<div style='margin-top:8px;font-size:13px;color:var(--amber)'>超出原文 " + (input.length - ref.length) + " 字，已计入扣分。</div>";
+      html += "<div style='margin-top:8px;font-size:13px;color:var(--err-fg)'>超出原文 " + (input.length - ref.length) + " 字，已计入扣分。</div>";
     }
     refView.innerHTML = html;
     $("refProgressBar").style.width = res.progress.toFixed(1) + "%";
@@ -181,7 +217,7 @@
       $("mAcc").innerHTML = acc.toFixed(1) + " <small>%</small>";
       $("mScore").textContent = Math.round(score);
       $("mGrade").textContent = window.TypingScoring.gradeLabel(score);
-      $("mGrade").style.color = score >= 90 ? "var(--green)" : (score >= 70 ? "var(--primary)" : "var(--red)");
+      $("mGrade").style.color = score >= 90 ? "var(--caret)" : (score >= 70 ? "var(--chart-line)" : "var(--err-fg)");
     } else {
       $("mAcc").textContent = "—";
       $("mScore").textContent = "—";
@@ -196,7 +232,7 @@
       var okC = tcpm > 0 ? spd.cpm >= tcpm : true;
       var okA = (tacc > 0 && res) ? res.accuracy >= tacc : (tacc > 0 ? true : true);
       $("targetState").textContent = (okC && okA) ? "✓ 已达标" : "未达标";
-      $("targetState").style.color = (okC && okA) ? "var(--green)" : "var(--amber)";
+      $("targetState").style.color = (okC && okA) ? "var(--caret)" : "var(--err-fg)";
     } else { $("targetState").textContent = "未设目标"; $("targetState").style.color = "var(--muted)"; }
 
     // 击键面板
@@ -333,17 +369,20 @@
       state.chart.update("none");
       return;
     }
-    var dark = document.documentElement.getAttribute("data-theme") === "dark";
+    var cs = getComputedStyle(document.documentElement);
+    var tickColor = (cs.getPropertyValue("--muted") || "").trim() || "#6b7280";
+    var lineColor = (cs.getPropertyValue("--chart-line") || "").trim() || "#c2410c";
+    var fillColor = (cs.getPropertyValue("--chart-fill") || "").trim() || "rgba(194,65,12,.10)";
     state.chart = new Chart(cv, {
       type: "line",
-      data: { labels: labels, datasets: [{ label: "速度（字/分）", data: data, tension: 0.3, fill: true, pointRadius: 0, borderWidth: 2 }] },
+      data: { labels: labels, datasets: [{ label: "速度（字/分）", data: data, tension: 0.3, fill: true, pointRadius: 0, borderWidth: 2, borderColor: lineColor, backgroundColor: fillColor }] },
       options: {
         responsive: true, maintainAspectRatio: false,
         animation: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { maxTicksLimit: 8, color: dark ? "#9aa6b8" : "#6b7280" }, grid: { display: false } },
-          y: { beginAtZero: true, ticks: { color: dark ? "#9aa6b8" : "#6b7280" } }
+          x: { ticks: { maxTicksLimit: 8, color: tickColor }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { color: tickColor } }
         }
       }
     });
@@ -786,14 +825,18 @@
       if (confirm("确定清空输入框内容吗？")) { pad.value = ""; window.TypingClipboard.resetHistory(); resetAll(false); pad.focus(); }
     });
 
-    btnLoadSample.addEventListener("click", function () {
-      var s = state.samples.filter(function (x) { return x.id === sampleSel.value; })[0];
-      if (!s) return;
-      state.refText = s.text; refEdit.value = s.text;
-      resetAll(true);
-      setMsg("已载入范文：" + s.name + "，开始跟打吧。", "");
-      pad.focus();
-    });
+    function selectedSample() {
+      return state.samples.filter(function (x) { return x.id === sampleSel.value; })[0] || null;
+    }
+    function syncSampleSel() {
+      for (var i = 0; i < state.samples.length; i++) {
+        if (state.samples[i].text === state.refText) { sampleSel.value = state.samples[i].id; return; }
+      }
+    }
+    function openCustomEditor() {
+      if (customDetails) customDetails.open = true;
+      refEdit.focus();
+    }
     btnUseCustom.addEventListener("click", function () {
       var t = refEdit.value.trim();
       if (!t) { setMsg("请先在自定义框里粘贴或输入对照文本。", "warn"); return; }
@@ -802,9 +845,32 @@
       setMsg("已设为对照文本（" + t.length + " 字），开始跟打吧。", "");
       pad.focus();
     });
+    // 选即用：下拉一切换就换上新对照，不用再点载入
     sampleSel.addEventListener("change", function () {
-      var s = state.samples.filter(function (x) { return x.id === sampleSel.value; })[0];
-      if (s) refEdit.value = s.text;
+      var s = selectedSample();
+      if (!s || s.text === state.refText) return;
+      if (pad.value && !confirm("换范文会清空当前输入，继续吗？")) { syncSampleSel(); pad.focus(); return; }
+      state.refText = s.text; refEdit.value = s.text;
+      resetAll(true);
+      setMsg("已换成：" + s.name + "，直接开打吧。", "");
+      toast("已换范文：" + s.name);
+      pad.focus();
+    });
+    // 点对照区改文本：拖选是复制（不管），普通点击展开自定义接着改
+    refView.addEventListener("click", function () {
+      try {
+        var sel = window.getSelection();
+        if (sel && sel.toString()) return;
+      } catch (e) {}
+      var draft = refEdit.value || "";
+      if (draft.trim() && draft !== state.refText &&
+          !confirm("自定义框里有还没生效的草稿，要用当前对照文本覆盖吗？\n（点“取消”保留草稿直接改）")) {
+        openCustomEditor();
+        return;
+      }
+      refEdit.value = state.refText;
+      openCustomEditor();
+      setMsg("已展开自定义对照，改完点「设为对照文本」即生效。", "");
     });
     btnPracticeMistakes.addEventListener("click", function () {
       var arr = Object.keys(state.mistakes).sort(function (a, b) { return state.mistakes[b] - state.mistakes[a]; }).slice(0, 40);
@@ -830,11 +896,23 @@
 
     autoCopyBox.addEventListener("change", function () { refreshSwitchLabel(); saveSettings(); window.TypingClipboard.resetHistory(); });
     btnTheme.addEventListener("click", function () {
-      var cur = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", cur);
-      refreshThemeBtn(); saveSettings();
+      state.themePref = state.themePref === "auto" ? "light" : (state.themePref === "light" ? "dark" : "auto");
+      applyTheme(); saveSettings();
       if (state.chart) { state.chart.destroy(); state.chart = null; updateChart(); }
     });
+    // 跟随系统：仅偏好为 auto 时响应
+    try {
+      var darkMq = window.matchMedia("(prefers-color-scheme: dark)");
+      var onSysTheme = function () { if (state.themePref === "auto") { applyTheme(); if (state.chart) { state.chart.destroy(); state.chart = null; updateChart(); } } };
+      if (darkMq.addEventListener) darkMq.addEventListener("change", onSysTheme);
+      else if (darkMq.addListener) darkMq.addListener(onSysTheme);
+    } catch (e) {}
+    if (btnZen) btnZen.addEventListener("click", function () { setZen(document.body.dataset.zen !== "true"); });
+    // Esc 退出专注（拼音组字中不拦截）
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !state.composing && document.body.dataset.zen === "true") setZen(false);
+    });
+    pad.addEventListener("scroll", function () { try { refView.scrollTop = pad.scrollTop; } catch (e) {} });
     fontSize.addEventListener("input", function () { applyFont(); saveSettings(); });
     [challengeDur, targetCpm, targetAcc].forEach(function (el) { el.addEventListener("change", saveSettings); });
 

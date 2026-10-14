@@ -3,7 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f7f8f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#161719" media="(prefers-color-scheme: dark)">
 <title>打字练习 · 提速提准 · 离线可用</title>
+<script>
+/* 首屏主题预设（避免闪烁）：显式浅/深直接用，缺省跟随系统 */
+(function(){try{var s=JSON.parse(localStorage.getItem("tpp-settings-v1")||"{}");var p=s.theme;var t;
+if(s.themeV===1&&(p==="auto"||p==="light"||p==="dark")){t=(p==="auto")?((window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"):p;}else if(p==="dark"){t="dark";}else{t=(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}
+document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
+</script>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -33,15 +42,15 @@
         <button id="btnFinish" class="btn btn-sm">结束打分</button>
         <span class="t" title="用时"><b id="mTime">00:00</b></span>
         <span class="t" title="挑战剩余">剩 <b id="mChallenge">∞</b></span>
+        <button id="btnZen" class="btn btn-sm ghost" title="专注模式：只留练习区并放大（Esc 退出）">🧘 专注</button>
       </div>
     </div>
 
     <div id="refCard">
       <div class="row sample-row">
-        <select id="sampleSel" class="sel" style="flex:1;min-width:200px"></select>
-        <button id="btnLoadSample" class="btn primary btn-sm">载入范文开练</button>
+        <select id="sampleSel" class="sel" style="flex:1;min-width:200px" title="选择后立即开练"></select>
       </div>
-      <details class="custom-details">
+      <details class="custom-details" id="customDetails">
         <summary>自定义文本 / 错题强化（点击展开）</summary>
         <textarea id="refEdit" class="ref-edit" placeholder="粘贴自己的文本（歌词、代码、英语文章都行），然后点「设为对照文本」。"></textarea>
         <div class="row" style="margin-top:8px">
@@ -49,9 +58,9 @@
           <button id="btnPracticeMistakes" class="btn btn-sm" disabled>用错题本生成强化段</button>
         </div>
       </details>
-      <div id="refView"></div>
+      <div id="refView" title="点击可修改对照文本（拖选为复制，不触发修改）"></div>
       <div class="progress"><div id="refProgressBar"></div></div>
-      <div class="pair-hint">↑ 对照：绿=对 / 红=错 / 黄=当前字 &nbsp;·&nbsp; ↓ 直接在下方输入框跟打（对照区选中也会自动复制）</div>
+      <div class="pair-hint">↑ 对照：绿=对 / 红=错 / 竖线=当前字 &nbsp;·&nbsp; ↓ 直接在下方输入框跟打 &nbsp;·&nbsp; 点击对照区可改文本（拖选为复制）</div>
     </div>
 
     <textarea id="pad" class="mono-input" placeholder="对照模式：照着紧上方绿字跟打。&#10;自由模式：随便打，看下方速度曲线和退格率。&#10;&#10;选中文字会自动复制（鼠标拖选 / Shift+方向键 / Ctrl+A）。&#10;编辑是 VS Code 手感：Ctrl+D 连选，Alt+↑↓ 移行，快捷键表在下方。"></textarea>
@@ -171,7 +180,8 @@
       5. <b>看什么</b>：中文看 字/分，英文看 词/分；退格率 &gt;8% 说明太赶，先降速保 50 字不断删；节奏“飘”说明停顿多，同一篇短文连打 3 遍。<br>
       6. <b>提分套路</b>：定目标（如 120字/分 + 95%）→ 打一段 → 看复盘和教练建议 → 用错题本强化 → 再打同一段，分数涨得最快。<br>
       7. <b>离线</b>：本项目无 CDN，图表库在 <code>vendor/chart.umd.min.js</code>，文本在 <code>texts/samples.json</code>，双击 <code>index.html</code> 或 <code>python3 -m http.server</code> 后打开 <code>http://localhost:8000/</code> 都可，推荐后者（剪贴板最稳）。<br>
-      8. <b>隐私</b>：内容、成绩、错题、击键统计只存本机 <code>localStorage</code>，不联网。
+      8. <b>隐私</b>：内容、成绩、错题、击键统计只存本机 <code>localStorage</code>，不联网。<br>
+      9. <b>主题与专注</b>：右上主题按钮在 自动 / 浅色 / 深色 间切换，默认跟随系统；练习区右上「🧘 专注」只留练习区并放大，<code>Esc</code> 退出。
     </div>
   </section>
 </main>
