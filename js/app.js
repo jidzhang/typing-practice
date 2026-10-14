@@ -746,13 +746,11 @@
       var gb = state.totalKeyStat.__back__ || (state.totalKeyStat.__back__ = { n: 0, back: 0 });
       gb.back += state.backCount;
     }
-    // 错字本累计（对照模式）
-    if (res && state.refText) {
-      var len = Math.min(state.refText.length, pad.value.length);
-      for (var i = 0; i < len; i++) {
-        if (state.refText[i] !== pad.value[i]) {
-          state.mistakes[state.refText[i]] = (state.mistakes[state.refText[i]] || 0) + 1;
-        }
+    // 错字本累计（对照模式）：用对齐后的错位，漏打不再连带污染
+    if (res && state.refText && res.errorIndexes) {
+      for (var i = 0; i < res.errorIndexes.length; i++) {
+        var ch = state.refText[res.errorIndexes[i]];
+        if (ch) state.mistakes[ch] = (state.mistakes[ch] || 0) + 1;
       }
     }
     // 历史记录
