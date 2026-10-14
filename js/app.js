@@ -152,9 +152,14 @@
         state.refText = savedRef;
         refEdit.value = savedRef;
       } else if (state.samples.length) {
-        state.refText = state.samples[1].text;
+        var def = null;
+        for (var i = 0; i < state.samples.length; i++) {
+          if (state.samples[i].id === "cn-news-ai") { def = state.samples[i]; break; }
+        }
+        def = def || state.samples[0];
+        state.refText = def.text;
         refEdit.value = state.refText;
-        sampleSel.value = state.samples[1].id;
+        sampleSel.value = def.id;
       }
       renderRef();
     }
