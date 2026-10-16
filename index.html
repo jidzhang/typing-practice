@@ -41,8 +41,10 @@ document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
       <div class="timer-inline">
         <button id="btnStart" class="btn primary btn-sm">开始</button>
         <button id="btnPause" class="btn btn-sm">暂停</button>
-        <button id="btnReset" class="btn btn-sm">重置</button>
+        <button id="btnReset" class="btn btn-sm" title="重置计时与输入 (Alt+R)">重置</button>
         <button id="btnFinish" class="btn btn-sm">结束打分</button>
+        <span class="t" title="实时速度"><b id="hudSpeed">0</b> <small>字/分</small></span>
+        <span class="t" title="实时准确率"><b id="hudAcc">—</b></span>
         <span class="t" title="用时"><b id="mTime">00:00</b></span>
         <span class="t" title="挑战剩余">剩 <b id="mChallenge">∞</b></span>
         <button id="btnZen" class="btn btn-sm ghost" title="专注模式：只留练习区并放大">🧘 专注</button>
@@ -51,7 +53,10 @@ document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
 
     <div id="refCard">
       <div class="row sample-row">
-        <select id="sampleSel" class="sel" style="flex:1;min-width:200px" title="选择后立即开练"></select>
+        <select id="sampleSel" class="sel" style="flex:1;min-width:180px" title="选择后立即开练"></select>
+        <button id="btnNextSample" class="btn btn-sm ghost" title="切换到下一篇范文">⏭ 下一篇</button>
+        <button id="btnRandomSample" class="btn btn-sm ghost" title="随机抽一篇范文">🎲 随机</button>
+        <label class="switch switch-sm" title="开启后中英文标点互通（如 , 与 ， 视为相同）"><input type="checkbox" id="loosePunct"> 标点宽容</label>
       </div>
       <details class="custom-details" id="customDetails">
         <summary>自定义文本 / 错题强化（点击展开）</summary>
@@ -64,13 +69,15 @@ document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
       <div id="refView" title="对照文本"></div>
       <div class="progress"><div id="refProgressBar"></div></div>
       <div class="pair-hint">↑ 对照：绿=对 / 红=错 / 竖线=当前字 &nbsp;·&nbsp; ↓ 直接在下方输入框跟打（对照区拖选可复制）
-      <button id="btnEditRef" class="btn btn-sm ghost" title="修改对照文本" style="margin-left:6px">✏️ 改对照</button></div>
+      <span id="pbBadge" class="pb-badge hidden"></span>
+      <button id="btnEditRef" class="btn btn-sm ghost" title="修改对照文本" style="margin-left:auto">✏️ 改对照</button></div>
     </div>
 
     <textarea id="pad" class="mono-input" placeholder="对照模式：照着紧上方绿字跟打。&#10;自由模式：随便打，看下方速度曲线和退格率。&#10;&#10;选中文字会自动复制（鼠标拖选 / Shift+方向键 / Ctrl+A）。&#10;编辑是 VS Code 手感：Ctrl+D 连选，Alt+↑↓ 移行，快捷键表在下方。"></textarea>
 
     <div class="statusbar">
       <span>全文 <b id="stTotal">0</b></span>
+      <span id="stRefWrap">进度 <b id="stProgress">0/0</b></span>
       <span>中文 <b id="stHan">0</b></span>
       <span>英文词 <b id="stWords">0</b></span>
       <span>行 <b id="stLines">0</b></span>
@@ -101,12 +108,20 @@ document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
         <div><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd><span>复制整行</span></div>
         <div><kbd>Ctrl</kbd>+<kbd>/</kbd><span>行注释开关</span></div>
         <div><kbd>Tab</kbd>/<kbd>Shift</kbd>+<kbd>Tab</kbd><span>缩进 / 退格 2 格</span></div>
+        <div><kbd>Alt</kbd>+<kbd>R</kbd> / <kbd>Alt</kbd>+<kbd>N</kbd><span>快速重来 / 下一篇</span></div>
         <div><kbd>Ctrl</kbd>+<kbd>S</kbd><span>保存到本机</span></div>
       </div>
       <div class="keys-note">Mac 用 ⌘ 代替 Ctrl；单行改动支持 Ctrl+Z 撤销；拼音组字时不拦截，放心打中文。</div>
     </details>
     <div id="msg"></div>
-    <div id="reportBox" class="tip hidden" style="border-style:solid"><div id="reportText"></div></div>
+    <div id="reportBox" class="tip report-card hidden">
+      <div id="reportText"></div>
+      <div class="row report-actions">
+        <button id="btnReportRetry" class="btn primary btn-sm">↻ 再练一遍</button>
+        <button id="btnReportNext" class="btn btn-sm">⏭ 下一篇</button>
+        <button id="btnReportMistakes" class="btn btn-sm">🎯 练错题强化</button>
+      </div>
+    </div>
   </section>
 
   <!-- 数据面板 -->
@@ -165,8 +180,14 @@ document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
   </div>
 
   <section class="card">
-    <h2>历史成绩（本机保存，前 30 条）</h2>
-    <div class="row"><button id="btnClearHist" class="btn btn-sm danger">清空历史</button></div>
+    <div class="section-head">
+      <h2>历史成绩（本机保存，前 30 条）</h2>
+      <div class="row">
+        <span id="histSummary" class="hist-summary"></span>
+        <button id="btnExportHist" class="btn btn-sm ghost">导出 CSV</button>
+        <button id="btnClearHist" class="btn btn-sm danger">清空历史</button>
+      </div>
+    </div>
     <div style="overflow:auto">
     <table class="hist">
       <thead><tr><th>时间</th><th>模式</th><th>文本</th><th>速度 CPM/WPM</th><th>准确率</th><th>综合分</th><th>用时</th></tr></thead>
@@ -185,7 +206,11 @@ document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
       6. <b>提分套路</b>：定目标（如 120字/分 + 95%）→ 打一段 → 看复盘和教练建议 → 用错题本强化 → 再打同一段，分数涨得最快。<br>
       7. <b>离线</b>：本项目无 CDN，图表库在 <code>vendor/chart.umd.min.js</code>，文本在 <code>texts/samples.json</code>，双击 <code>index.html</code> 或 <code>python3 -m http.server</code> 后打开 <code>http://localhost:8000/</code> 都可，推荐后者（剪贴板最稳）。<br>
       8. <b>隐私</b>：内容、成绩、错题、击键统计只存本机 <code>localStorage</code>，不联网。<br>
-      9. <b>主题与专注</b>：右上主题按钮在 自动 / 浅色 / 深色 间切换，默认跟随系统；练习区右上「🧘 专注」只留练习区并放大，点「↩ 退出专注」回来查看评分。
+      9. <b>主题与专注</b>：右上主题按钮在 自动 / 浅色 / 深色 间切换，默认跟随系统；练习区右上「🧘 专注」只留练习区并放大，点「↩ 退出专注」回来查看评分。<br>
+      10. <b>换篇与重来</b>：范文行内有 <b>⏭ 下一篇</b> / <b>🎲 随机</b>，键盘 <code>Alt+N</code> 换下一篇、<code>Alt+R</code> 重来（会清空输入与计时，打了一半会先确认）。<br>
+      11. <b>标点宽容</b>：打开后中文标点与英文半角等价（<code>，</code>=<code>,</code>、<code>。</code>=<code>.</code> 等）不计错，用英文输入法跟打长文时不至于被标点拖住准确率。<br>
+      12. <b>实时反馈</b>：计时条右侧实时显示 字/分 与准确率；状态栏显示对齐进度（对齐是按内容比对的，漏打/多打会自动错位对齐，不会一个字错导致后面全红）。<b>本篇最佳</b>徽章显示同一篇的历史最好成绩。<br>
+      13. <b>复盘与历史</b>：结算卡片可直接「再练一遍 / 下一篇 / 练错题强化」；历史记录支持 <b>导出 CSV</b>（带 BOM，Excel 打开不乱码）。
     </div>
   </section>
 </main>

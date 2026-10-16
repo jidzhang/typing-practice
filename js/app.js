@@ -5,14 +5,17 @@
 
   var pad = $("pad"), refEdit = $("refEdit"), refView = $("refView"),
     sampleSel = $("sampleSel"), msg = $("msg"), toastEl = $("toast"),
-    autoCopyBox = $("autoCopy"), switchLabel = $("switchLabel");
+    autoCopyBox = $("autoCopy"), switchLabel = $("switchLabel"),
+    loosePunctBox = $("loosePunct");
 
   var tabFree = $("tabFree"), tabRef = $("tabRef"), refCard = $("refCard");
   var btnStart = $("btnStart"), btnPause = $("btnPause"), btnReset = $("btnReset"), btnFinish = $("btnFinish");
   var btnCopySel = $("btnCopySel"), btnCopyAll = $("btnCopyAll"),
       btnSelectAll = $("btnSelectAll"), btnClear = $("btnClear");
   var btnUseCustom = $("btnUseCustom"), btnPracticeMistakes = $("btnPracticeMistakes"), customDetails = $("customDetails");
-  var btnClearHist = $("btnClearHist"), btnTheme = $("btnTheme"), btnZen = $("btnZen");
+  var btnNextSample = $("btnNextSample"), btnRandomSample = $("btnRandomSample");
+  var btnReportRetry = $("btnReportRetry"), btnReportNext = $("btnReportNext"), btnReportMistakes = $("btnReportMistakes");
+  var btnClearHist = $("btnClearHist"), btnExportHist = $("btnExportHist"), btnTheme = $("btnTheme"), btnZen = $("btnZen");
   var fontSize = $("fontSize"), fontVal = $("fontVal");
   var challengeDur = $("challengeDur"), targetCpm = $("targetCpm"), targetAcc = $("targetAcc");
 
@@ -22,10 +25,12 @@
   var state = {
     mode: "ref",
     themePref: "auto", // auto | light | dark：auto 跟随系统
+    loosePunct: false,
     samples: [],
     refText: "",
     started: false,
     paused: false,
+    finished: false,
     startStamp: 0,      // performance.now() 基准
     elapsed: 0,         // 秒（累计，暂停时冻结）
     timerId: null,
@@ -45,6 +50,10 @@
     totalKeyStat: {}    // 跨次累计 code -> {n, err}
   };
 
+  function scoreOpts() {
+    return { loosePunct: !!state.loosePunct };
+  }
+
   /* ---------- 小组件 ---------- */
   var toastTimer = null;
   function toast(t) {
@@ -62,6 +71,10 @@
       var s = JSON.parse(localStorage.getItem(LS_SETTINGS) || "{}");
       if (s.mode) state.mode = s.mode;
       if (typeof s.autoCopy === "boolean") autoCopyBox.checked = s.autoCopy;
+      if (typeof s.loosePunct === "boolean") {
+        state.loosePunct = s.loosePunct;
+        if (loosePunctBox) loosePunctBox.checked = s.loosePunct;
+      }
       // 主题偏好：新存档带 themeV=1，直接用 auto/light/dark；
       // 老存档只有解析后的 light/dark，其中 dark 必为手动点过，保留为显式，
       // light 无法区分是否手动过，一律按 auto 跟随系统
@@ -90,6 +103,7 @@
       localStorage.setItem(LS_SETTINGS, JSON.stringify({
         mode: state.mode,
         autoCopy: autoCopyBox.checked,
+        loosePunct: state.loosePunct,
         theme: state.themePref || "auto",
         themeV: 1,
         zen: document.body.dataset.zen === "true",
@@ -197,11 +211,15 @@
 
   /* ---------- 对照高亮 ---------- */
   function renderRef() {
-    if (state.mode !== "ref") { refView.innerHTML = "<span class='todo'>自由练习模式不对照原文，直接打字即可。</span>"; return; }
+    if (state.mode !== "ref") {
+      refView.innerHTML = "<span class='todo'>自由练习模式不对照原文，直接打字即可。</span>";
+      refreshPbBadge();
+      return;
+    }
     var ref = state.refText || "", input = pad.value || "";
-    var res = window.TypingScoring.scoreReference(ref, input);
+    var res = window.TypingScoring.scoreReference(ref, input, scoreOpts());
     var html = "";
-    var cur = Math.min(input.length, ref.length);
+    var cur = Math.min(res.curIndex, ref.length);
     for (var i = 0; i < ref.length; i++) {
       var ch = ref[i];
       var disp = escapeHtml(ch); // 与输入区逐字同宽：不插入额外符号
@@ -210,18 +228,59 @@
       html += "<span class='" + cls + "'>" + disp + "</span>";
     }
     if (!ref) html = "<span class='todo'>请在上方选择范文或粘贴自定义文本后点「设为对照文本」。</span>";
-    else if (input.length > ref.length) {
-      html += "<div style='margin-top:8px;font-size:13px;color:var(--err-fg)'>超出原文 " + (input.length - ref.length) + " 字，已计入扣分。</div>";
+    else if (res.extra > 0 && res.curIndex >= ref.length) {
+      html += "<div style='margin-top:8px;font-size:13px;color:var(--err-fg)'>超出原文 " + res.extra + " 字，已计入扣分。</div>";
     }
     var keepScroll = 0;
     try { keepScroll = refView.scrollTop; } catch (e) {}
     refView.innerHTML = html;
-    try { if (keepScroll) refView.scrollTop = keepScroll; } catch (e) {}
+    try {
+      var curEl = refView.querySelector("span.cur");
+      if (curEl && refView.scrollHeight > refView.clientHeight) {
+        var top = curEl.offsetTop - refView.offsetTop;
+        var h = refView.clientHeight;
+        if (top < keepScroll + 16 || top > keepScroll + h - 38) {
+          refView.scrollTop = Math.max(0, top - Math.round(h * 0.38));
+        } else {
+          refView.scrollTop = keepScroll;
+        }
+      } else if (keepScroll) {
+        refView.scrollTop = keepScroll;
+      }
+    } catch (e) {}
     $("refProgressBar").style.width = res.progress.toFixed(1) + "%";
+    refreshPbBadge();
     return res;
   }
   function escapeHtml(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function refreshPbBadge() {
+    var badge = $("pbBadge");
+    if (!badge) return;
+    if (state.mode !== "ref" || !state.refText) {
+      badge.classList.add("hidden");
+      return;
+    }
+    var name = currentSampleName();
+    var hist = [];
+    try { hist = JSON.parse(localStorage.getItem(LS_HIST) || "[]"); } catch (e) {}
+    var best = null;
+    for (var i = 0; i < hist.length; i++) {
+      var h = hist[i];
+      if (h.sample === name && h.mode === "对照") {
+        if (!best || (h.score || 0) > (best.score || 0) || ((h.score || 0) === (best.score || 0) && (h.cpm || 0) > (best.cpm || 0))) {
+          best = h;
+        }
+      }
+    }
+    if (!best) {
+      badge.classList.add("hidden");
+      return;
+    }
+    badge.textContent = "🏆 本篇最佳：" + best.cpm + " 字/分 · " + (best.acc != null ? best.acc + "%" : "—") + " · " + (best.score != null ? best.score + "分" : "");
+    badge.classList.remove("hidden");
   }
 
   /* ---------- 统计 + 打分 + 击键面板 ---------- */
@@ -240,20 +299,27 @@
     $("mTime").innerHTML = window.TypingStats.formatTime(sec);
     $("mCpm").innerHTML = spd.cpm + " <small>字/分</small>";
     $("mWpm").innerHTML = spd.wpm + " <small>词/分</small>";
+    if ($("hudSpeed")) $("hudSpeed").textContent = spd.cpm;
 
     var res = null;
+    var stRefWrap = $("stRefWrap"), stProgress = $("stProgress");
     if (state.mode === "ref") {
       res = renderRef();
       var acc = res.accuracy, score = res.score;
-      $("mAcc").innerHTML = acc.toFixed(1) + " <small>%</small>";
-      $("mScore").textContent = Math.round(score);
-      $("mGrade").textContent = window.TypingScoring.gradeLabel(score);
-      $("mGrade").style.color = score >= 90 ? "var(--caret)" : (score >= 70 ? "var(--chart-line)" : "var(--err-fg)");
+      $("mAcc").innerHTML = (text.length ? acc.toFixed(1) + " <small>%</small>" : "—");
+      $("mScore").textContent = text.length ? Math.round(score) : "—";
+      $("mGrade").textContent = text.length ? window.TypingScoring.gradeLabel(score) : "—";
+      $("mGrade").style.color = !text.length ? "var(--muted)" : (score >= 90 ? "var(--caret)" : (score >= 70 ? "var(--chart-line)" : "var(--err-fg)"));
+      if ($("hudAcc")) $("hudAcc").textContent = text.length ? acc.toFixed(1) + "%" : "—";
+      if (stRefWrap) stRefWrap.classList.remove("hidden");
+      if (stProgress) stProgress.textContent = res.curIndex + "/" + res.refLen + " (" + Math.round(res.progress) + "%)";
     } else {
       $("mAcc").textContent = "—";
       $("mScore").textContent = "—";
       $("mGrade").textContent = "自由练";
       $("mGrade").style.color = "var(--muted)";
+      if ($("hudAcc")) $("hudAcc").textContent = "自由";
+      if (stRefWrap) stRefWrap.classList.add("hidden");
     }
 
     // 目标达成提示
@@ -311,7 +377,7 @@
   function renderErrors(res) {
     var box = $("errList");
     if (state.mode !== "ref" || !res || !pad.value) { box.innerHTML = "<li>开始打字后，这里会列出你最常打错的对照，帮你针对性加练。</li>"; $("slowList").innerHTML = "<li>多打 30 个键后，这里会列出你按得最慢 / 最常删的键。</li>"; return; }
-    var tops = window.TypingScoring.topErrors(state.refText, pad.value, 6);
+    var tops = window.TypingScoring.topErrors(state.refText, pad.value, 6, scoreOpts());
     box.innerHTML = tops.length ? tops.map(function (x) { return "<li>" + escapeHtml(x.label) + " × " + x.count + "</li>"; }).join("") : "<li>目前零错字，保持！</li>";
     // 慢键：按平均 IKI 排序
     var arr = Object.keys(state.perKey).map(function (code) {
@@ -330,6 +396,7 @@
     if (state.started && !state.paused) return;
     if (!state.started) {
       state.started = true;
+      state.finished = false;
       state.elapsed = 0;
       state.speedHist = [];
       var cd = parseInt(challengeDur.value, 10) || 0;
@@ -351,7 +418,7 @@
   }
   function resetAll(clearText) {
     clearInterval(state.timerId);
-    state.started = false; state.paused = false;
+    state.started = false; state.paused = false; state.finished = false;
     state.elapsed = 0; state.speedHist = [];
     state.keys = []; state.keyCount = 0; state.backCount = 0;
     state.ikiList = []; state.lastKeyT = 0; state.perKey = {};
@@ -362,7 +429,7 @@
     $("reportBox").classList.add("hidden");
     updateChart();
     updateAll(false);
-    renderErrors(state.mode === "ref" ? window.TypingScoring.scoreReference(state.refText, pad.value) : null);
+    renderErrors(state.mode === "ref" ? window.TypingScoring.scoreReference(state.refText, pad.value, scoreOpts()) : null);
     refreshTimerBtns();
   }
   function onTick() {
@@ -653,7 +720,12 @@
       // 把最近的非退格键记一次“关联删改”，用于定位易错键
       var ks = state.keys;
       for (var i = ks.length - 1; i >= 0; i--) {
-        if (ks[i].key !== "Backspace" && !ks[i].counted) { ks[i].counted = true; break; }
+        if (ks[i].key !== "Backspace" && !ks[i].counted) {
+          ks[i].counted = true;
+          var pk = state.perKey[ks[i].code];
+          if (pk) pk.err = (pk.err || 0) + 1;
+          break;
+        }
       }
     }
     state.keys.push({ key: e.key, code: e.code || e.key, t: Math.round(t) });
@@ -672,6 +744,8 @@
       else if (mod && e.shiftKey && !e.altKey && code === "KeyK") { e.preventDefault(); deleteLine(); }
       else if (!mod && e.altKey && !e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) { e.preventDefault(); moveLines(e.key === "ArrowUp" ? -1 : 1); }
       else if (!mod && e.altKey && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) { e.preventDefault(); duplicateLine(e.key === "ArrowUp" ? -1 : 1); }
+      else if (!mod && e.altKey && !e.shiftKey && code === "KeyR") { e.preventDefault(); resetAll(true); setMsg("已清空并重置，重新开打。", ""); toast("已重来 ↻"); pad.focus(); }
+      else if (!mod && e.altKey && !e.shiftKey && code === "KeyN") { e.preventDefault(); switchSampleStep(1, false); }
       else if (mod && !e.shiftKey && !e.altKey && e.key === "/") { e.preventDefault(); toggleComment(); }
       else if (!mod && !e.altKey && e.key === "Tab") { e.preventDefault(); indent(e.shiftKey ? -1 : 1); }
       else if (mod && !e.shiftKey && !e.altKey && e.key === "[") { e.preventDefault(); indent(-1); }
@@ -689,19 +763,20 @@
     if (inputRaf) return;
     inputRaf = raf(function () {
       inputRaf = 0;
-      updateAll(true);
-      var res = state.mode === "ref" ? window.TypingScoring.scoreReference(state.refText, pad.value) : null;
-      renderErrors(res);
+      var r = updateAll(true);
+      renderErrors(r.result);
+      // 打完对照全文（按对齐进度或长度达到）→ 自动结算（仅触发一次）
+      if (state.mode === "ref" && state.refText && state.started && !state.finished) {
+        if ((r.result && r.result.done) || pad.value.length >= state.refText.length) {
+          finishPractice(false);
+        }
+      }
     });
   }
   pad.addEventListener("input", function () {
-    if (!state.started) startTimer();
+    if (!state.started && !state.finished) startTimer();
     // 重排合帧：输入法连续上屏也只画一次，手机端不跳
     scheduleInputRender();
-    // 打完对照全文 → 自动结算（只读长度，不碰 DOM）
-    if (state.mode === "ref" && state.refText && pad.value.length >= state.refText.length && state.started) {
-      finishPractice(false);
-    }
   });
 
   /* ---------- 复制（保留） ---------- */
@@ -732,6 +807,7 @@
     state.elapsed = nowSec();
     clearInterval(state.timerId);
     state.paused = true;
+    state.finished = true;
     refreshTimerBtns();
     var r = updateAll(false);
     var sec = nowSec() || 1;
@@ -773,7 +849,8 @@
       localStorage.setItem(LS_HIST, JSON.stringify(hist));
     } catch (e) {}
     saveSettings();
-    renderHist(); renderMistakes();
+    renderHist(); renderMistakes(); refreshPbBadge();
+    if (btnReportMistakes) btnReportMistakes.disabled = btnPracticeMistakes.disabled;
     // 报告
     var avgIki = state.ikiList.length ? Math.round(state.ikiList.reduce(function (a, b) { return a + b; }, 0) / state.ikiList.length) : 0;
     var advice = buildAdvice(res, spd, avgIki);
@@ -781,11 +858,11 @@
     $("reportText").innerHTML =
       "<b>" + (autoByTime ? "⏱ 挑战时间到，已自动结算" : "✓ 本次练习已结算") + "</b><br>" +
       "用时 " + window.TypingStats.formatTime(sec) + " · 有效字 " + st.nonSpace + " · 速度 <b>" + spd.cpm + " 字/分（" + spd.wpm + " 词/分）</b>" +
-      (res ? " · 准确率 <b>" + res.accuracy.toFixed(1) + "%</b> · 综合分 <b>" + Math.round(res.score) + "</b>（" + window.TypingScoring.gradeLabel(res.score) + "），对 " + res.correct + " / 错+缺 " + res.errors : "") +
+      (res ? " · 准确率 <b>" + res.accuracy.toFixed(1) + "%</b> · 综合分 <b>" + Math.round(res.score) + "</b>（" + window.TypingScoring.gradeLabel(res.score) + "），对 " + res.correct + " / 错+缺 " + res.totalErrors : "") +
       " · 按键 " + state.keyCount + "（退格 " + state.backCount + "）" + (avgIki ? " · 平均键间隔 " + avgIki + "ms" : "") +
       "<br><span style='color:var(--muted)'>" + advice + "</span>";
     $("reportBox").scrollIntoView({ behavior: "smooth", block: "nearest" });
-    setMsg(autoByTime ? "挑战结束，已自动打分并存档。" : "已完成对照全文，自动打分并存档。切换范文或点重置可开始下一次。", "");
+    setMsg(autoByTime ? "挑战结束，已自动打分并存档。" : "已完成对照全文，自动打分并存档。点「再练一遍」或「下一篇」继续。", "");
     updateChart();
   }
 
@@ -822,13 +899,98 @@
     var hist = [];
     try { hist = JSON.parse(localStorage.getItem(LS_HIST) || "[]"); } catch (e) {}
     var tb = $("histBody");
-    if (!hist.length) { tb.innerHTML = "<tr><td colspan='7' style='color:var(--muted)'>暂无记录，打完一段对照或点「结束并打分」就会存档。</td></tr>"; return; }
+    var sumEl = $("histSummary");
+    if (!hist.length) {
+      tb.innerHTML = "<tr><td colspan='7' style='color:var(--muted)'>暂无记录，打完一段对照或点「结束打分」就会存档。</td></tr>";
+      if (sumEl) sumEl.textContent = "";
+      return;
+    }
+    var maxCpm = 0, sumCpm = 0, accCount = 0, sumAcc = 0;
+    hist.forEach(function (h) {
+      var c = h.cpm || 0;
+      if (c > maxCpm) maxCpm = c;
+      sumCpm += c;
+      if (h.acc != null) { sumAcc += h.acc; accCount++; }
+    });
+    if (sumEl) {
+      var avgCpm = Math.round(sumCpm / hist.length);
+      var avgAcc = accCount ? (sumAcc / accCount).toFixed(1) + "%" : "—";
+      sumEl.textContent = "共 " + hist.length + " 次 · 最高 " + maxCpm + " 字/分 · 平均 " + avgCpm + " 字/分 · 均准 " + avgAcc;
+    }
     tb.innerHTML = hist.map(function (h) {
       return "<tr><td>" + escapeHtml(h.date) + "</td><td>" + escapeHtml(h.mode) + "</td><td>" +
         escapeHtml(h.sample || "") + "</td><td>" + h.cpm + " / " + h.wpm + "</td><td>" +
         (h.acc === null ? "—" : h.acc + "%") + "</td><td>" + (h.score === null ? "—" : h.score) +
         "</td><td>" + window.TypingStats.formatTime(h.sec) + "</td></tr>";
     }).join("");
+  }
+
+  function exportHistCsv() {
+    var hist = [];
+    try { hist = JSON.parse(localStorage.getItem(LS_HIST) || "[]"); } catch (e) {}
+    if (!hist.length) { toast("暂无历史成绩可导出"); return; }
+    var rows = [["时间", "模式", "文本", "CPM(字/分)", "WPM(词/分)", "准确率(%)", "综合分", "用时(秒)", "按键数", "退格数"]];
+    hist.forEach(function (h) {
+      rows.push([
+        h.date || "", h.mode || "", h.sample || "",
+        h.cpm || 0, h.wpm || 0,
+        h.acc == null ? "" : h.acc,
+        h.score == null ? "" : h.score,
+        h.sec || 0, h.keys || 0, h.backs || 0
+      ]);
+    });
+    var csv = "﻿" + rows.map(function (r) {
+      return r.map(function (cell) {
+        var s = String(cell).replace(/"/g, '""');
+        return /[",\n]/.test(s) ? '"' + s + '"' : s;
+      }).join(",");
+    }).join("\n");
+    try {
+      var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "typing-history-" + new Date().toISOString().slice(0, 10) + ".csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      toast("已导出 CSV");
+    } catch (e) { toast("导出失败"); }
+  }
+
+  function switchSampleStep(step, random) {
+    if (!state.samples.length) return;
+    if (pad.value && !state.finished && !confirm("换范文会清空当前输入，继续吗？")) { pad.focus(); return; }
+    var idx = -1;
+    for (var i = 0; i < state.samples.length; i++) {
+      if (state.samples[i].id === sampleSel.value) { idx = i; break; }
+    }
+    var nextIdx = 0;
+    if (random && state.samples.length > 1) {
+      do { nextIdx = Math.floor(Math.random() * state.samples.length); } while (nextIdx === idx);
+    } else {
+      nextIdx = (idx + (step || 1) + state.samples.length) % state.samples.length;
+    }
+    var s = state.samples[nextIdx];
+    sampleSel.value = s.id;
+    state.refText = s.text; refEdit.value = s.text;
+    resetAll(true);
+    setMsg("已换成：" + s.name + "，直接开打吧。", "");
+    toast("已换范文：" + s.name);
+    pad.focus();
+  }
+
+  function startMistakePractice() {
+    var arr = Object.keys(state.mistakes).sort(function (a, b) { return state.mistakes[b] - state.mistakes[a]; }).slice(0, 40);
+    if (!arr.length) { toast("错题本还是空的"); return; }
+    var chunk = arr.join("");
+    var txt = ("【错题强化】请跟打下面这段（来自你的错字本）：\n" + chunk.split("").join(" ") + "\n" + chunk + "\n" + chunk).slice(0, 600);
+    state.refText = txt; refEdit.value = txt;
+    resetAll(true);
+    setMsg("已按你的错字本生成强化段，反复打 3 遍。", "");
+    toast("已生成错题强化段");
+    pad.focus();
   }
 
   function renderMistakes() {
@@ -839,6 +1001,7 @@
       return "<code>" + escapeHtml(x.ch === " " ? "␣" : x.ch) + "×" + x.n + "</code>";
     }).join(" ") : "暂无，出现对照错字后自动收集。";
     btnPracticeMistakes.disabled = !top.length;
+    if (btnReportMistakes) btnReportMistakes.disabled = !top.length;
   }
 
   /* ---------- 事件绑定 ---------- */
@@ -903,22 +1066,29 @@
       openCustomEditor();
       setMsg("已展开自定义对照，改完点「设为对照文本」即生效。", "");
     });
-    btnPracticeMistakes.addEventListener("click", function () {
-      var arr = Object.keys(state.mistakes).sort(function (a, b) { return state.mistakes[b] - state.mistakes[a]; }).slice(0, 40);
-      if (!arr.length) return;
-      // 用错字组一段针对性文本：每个错字重复 3 遍，穿插常用连接词
-      var chunk = arr.join("").repeat(1);
-      var txt = ("【错题强化】请跟打下面这段（来自你的错字本）：\n" + chunk.split("").join(" ") + "\n" + chunk + "\n" + chunk).slice(0, 600);
-      state.refText = txt; refEdit.value = txt;
+    btnPracticeMistakes.addEventListener("click", startMistakePractice);
+    if (btnNextSample) btnNextSample.addEventListener("click", function () { switchSampleStep(1, false); });
+    if (btnRandomSample) btnRandomSample.addEventListener("click", function () { switchSampleStep(1, true); });
+    if (btnReportRetry) btnReportRetry.addEventListener("click", function () {
       resetAll(true);
-      setMsg("已按你的错字本生成强化段，反复打 3 遍。", "");
+      setMsg("已清空并重置，再来一遍！", "");
       pad.focus();
+    });
+    if (btnReportNext) btnReportNext.addEventListener("click", function () { switchSampleStep(1, false); });
+    if (btnReportMistakes) btnReportMistakes.addEventListener("click", startMistakePractice);
+    if (btnExportHist) btnExportHist.addEventListener("click", exportHistCsv);
+    if (loosePunctBox) loosePunctBox.addEventListener("change", function () {
+      state.loosePunct = loosePunctBox.checked;
+      saveSettings();
+      var r = updateAll(false);
+      renderErrors(r.result);
+      toast(state.loosePunct ? "标点宽容：已开启（中英标点互通）" : "标点宽容：已关闭");
     });
 
     btnClearHist.addEventListener("click", function () {
       if (!confirm("清空全部历史成绩吗？")) return;
       try { localStorage.removeItem(LS_HIST); } catch (e) {}
-      renderHist();
+      renderHist(); refreshPbBadge();
     });
     $("btnClearMistakes").addEventListener("click", function () {
       if (!confirm("清空错题本吗？")) return;
@@ -982,7 +1152,7 @@
     initSamples();
     renderHist(); renderMistakes();
     // 等范文载入后再做一次对照渲染
-    setTimeout(function () { updateAll(false); renderErrors(window.TypingScoring.scoreReference(state.refText, pad.value)); }, 400);
+    setTimeout(function () { updateAll(false); renderErrors(window.TypingScoring.scoreReference(state.refText, pad.value, scoreOpts())); }, 400);
     updateAll(false);
     refreshTimerBtns();
     updateChart();

@@ -60,8 +60,14 @@
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif; }
-/* 顶栏：白底细线，不抢戏 */
-header.top { background: var(--bg); border-bottom: 2px solid var(--border-soft); padding: 12px 20px; position: sticky; top: 0; z-index: 10; }
+/* 顶栏：白底细线 + 毛玻璃微透，不抢戏 */
+header.top {
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1.5px solid var(--border-soft);
+  padding: 12px 20px; position: sticky; top: 0; z-index: 10;
+}
 .top-inner { max-width: 1048px; margin: 0 auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; } /* 1048 = 练习区内容宽（1080-两侧16px），顶行与卡片左右对齐 */
 .top-inner h1 { margin: 0; font-size: 19px; font-weight: 800; color: var(--text); }
 .top-inner h1 img.logo { height: 1em; width: 1em; vertical-align: -0.12em; margin-right: 8px; }
@@ -70,12 +76,19 @@ header.top { background: var(--bg); border-bottom: 2px solid var(--border-soft);
 .tabs button, .icon-btn {
   border: 1.5px solid var(--border); background: var(--card); color: var(--text-2);
   border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease, transform .1s ease;
 }
 .tabs button.active { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); }
 .tabs button:not(.active):hover, .icon-btn:hover { border-color: var(--caret); color: var(--text); }
 main { max-width: 1080px; margin: 18px auto 70px; padding: 0 16px; display: grid; gap: 16px; }
-.card { background: var(--card); border: 1.5px solid var(--border-soft); border-radius: var(--radius); padding: 18px; }
+.card {
+  background: var(--card); border: 1.5px solid var(--border-soft); border-radius: var(--radius); padding: 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .03);
+}
 .card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 800; color: var(--text); }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.section-head h2 { margin: 0; }
+.hist-summary { font-size: 13px; color: var(--muted); font-weight: 600; margin-right: 4px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
@@ -90,25 +103,31 @@ label.switch input { width: 15px; height: 15px; accent-color: var(--caret); }
 button.btn {
   border: 1.5px solid var(--border); background: var(--card); color: var(--text);
   border-radius: 8px; padding: 7px 14px; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease, transform .08s ease;
 }
-button.btn:hover { border-color: var(--caret); }
+button.btn:hover:not(:disabled) { border-color: var(--caret); }
+button.btn:active:not(:disabled), .tabs button:active, .icon-btn:active { transform: translateY(1px); }
 button.btn.primary { background: var(--primary-bg); border-color: var(--primary-bg); color: var(--primary-fg); font-weight: 800; }
-button.btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+button.btn.primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
 button.btn.danger { color: var(--err-fg); }
+button.btn.danger:hover:not(:disabled) { border-color: var(--err-fg); background: var(--err-bg); }
 button.btn:disabled { opacity: .5; cursor: not-allowed; }
 select.sel, input.num {
   background: var(--card); color: var(--text);
   border: 1.5px solid var(--border); border-radius: 8px;
   padding: 7px 10px; font-size: 14px; max-width: 100%;
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
+select.sel:focus, input.num:focus { outline: none; border-color: var(--caret); box-shadow: 0 0 0 3px var(--accent-ring); }
 /* 打字区：等宽大字（学 Monkeytype），未打深灰、打对纯黑+淡绿底、打错红 */
 textarea.mono-input, textarea.ref-edit {
   width: 100%; border-radius: 10px; border: 2px solid var(--border);
   padding: 14px 16px; font-family: var(--mono);
   font-size: var(--pad-font, 17px); line-height: 1.9; letter-spacing: .3px;
   background: var(--card); color: var(--text); outline: none; resize: vertical;
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
-textarea.mono-input:focus, textarea.ref-edit:focus { border-color: var(--caret); }
+textarea.mono-input:focus, textarea.ref-edit:focus { border-color: var(--caret); box-shadow: 0 0 0 3px var(--accent-ring); }
 textarea.mono-input { min-height: 220px; caret-color: var(--caret); white-space: pre-wrap; word-break: break-all; overflow-wrap: anywhere; }
 textarea.ref-edit { min-height: 90px; font-size: 15px; background: var(--panel); font-family: inherit; letter-spacing: 0; }
 textarea::placeholder { color: var(--muted); opacity: 1; }
@@ -183,7 +202,15 @@ footer { text-align: center; font-size: 13px; color: var(--muted); padding: 20px
 .practice-card #refView { border-radius: 10px 10px 0 0; border-bottom: none; margin-bottom: 0; max-height: 30vh; overflow: auto; position: sticky; top: 64px; z-index: 5; cursor: text; }
 
 .practice-card .progress { border-radius: 0; margin-top: 0; height: 8px; }
-.pair-hint { font-size: 13px; font-weight: 600; color: var(--muted); padding: 6px 2px 8px; }
+.pair-hint { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; font-weight: 600; color: var(--muted); padding: 6px 2px 8px; }
+.pb-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--panel); border: 1px solid var(--border);
+  color: var(--text-2); border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.report-card { border-style: solid; border-color: var(--caret); background: var(--panel); }
+.report-actions { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }
 .practice-card #pad { border-radius: 0 0 10px 10px; border-top-width: 2px; margin-top: 0; min-height: 240px; }
 .copy-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1.5px dashed var(--border); }
 .copy-btns { display: inline-flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
